@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Users, Map, CreditCard, Shield, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppBadge from '@/components/ui-elements/AppBadge';
@@ -8,6 +7,13 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 const Index = () => {
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    window.scrollTo(0, 0); // Scroll to top first
+    navigate('/signup');
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -29,16 +35,25 @@ const Index = () => {
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in animate-delay-300">
-                <Link to="/travel-rooms">
-                  <Button variant="default" size="lg" className="btn-primary w-full sm:w-auto">
-                    Explore Trips <ChevronRight size={18} />
-                  </Button>
-                </Link>
-                <Link to="/signup">
-                  <Button variant="outline" size="lg" className="btn-ghost w-full sm:w-auto">
-                    Create Account
-                  </Button>
-                </Link>
+                <Button 
+                  variant="default" 
+                  size="lg" 
+                  className="btn-primary w-full sm:w-auto"
+                  onClick={() => {
+                    window.scrollTo(0, 0);
+                    navigate('/travel-rooms');
+                  }}
+                >
+                  Explore Trips <ChevronRight size={18} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="btn-ghost w-full sm:w-auto"
+                  onClick={handleGetStarted}
+                >
+                  Create Account
+                </Button>
               </div>
               
               <div className="relative mt-16 animate-fade-in animate-delay-400">
@@ -164,11 +179,14 @@ const Index = () => {
               <p className="text-primary-foreground/80 mb-8 text-lg">
                 Join thousands of students already using TravelSquad to create unforgettable travel experiences.
               </p>
-              <Link to="/signup">
-                <Button variant="outline" size="lg" className="bg-white text-primary hover:bg-white/90">
-                  Create Free Account
-                </Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="bg-white text-primary hover:bg-white/90"
+                onClick={handleGetStarted}
+              >
+                Create Free Account
+              </Button>
             </div>
           </div>
         </section>
@@ -180,3 +198,4 @@ const Index = () => {
 };
 
 export default Index;
+
