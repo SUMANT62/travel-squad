@@ -1,209 +1,169 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { User, Mail, Lock, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
-
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
-type AuthMode = 'login' | 'signup';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AuthFormProps {
-  mode: AuthMode;
+  mode: 'login' | 'signup';
 }
 
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-const signupSchema = z
-  .object({
-    name: z.string().min(2, 'Name must be at least 2 characters'),
-    email: z.string().email('Please enter a valid email'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type SignupFormValues = z.infer<typeof signupSchema>;
-
 const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login, signUp } = useAuth();
-
-  const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  const signupForm = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
-  });
-
-  const activeForm = mode === 'login' ? loginForm : signupForm;
-
-  const onSubmit = async (values: LoginFormValues | SignupFormValues) => {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form states
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
     setIsSubmitting(true);
+    
     try {
       if (mode === 'login') {
-        const loginValues = values as LoginFormValues;
-        await login(loginValues.email, loginValues.password);
-        toast.success('Successfully logged in!');
+        await login(email, password);
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully logged in.",
+        });
       } else {
-        const signupValues = values as SignupFormValues;
-        await signUp(signupValues.name, signupValues.email, signupValues.password);
-        toast.success('Account created successfully!');
+        await signUp(name, email, password);
+        toast({
+          title: "Account created!",
+          description: "Your account has been successfully created.",
+        });
       }
       navigate('/travel-rooms');
-    } catch (error) {
-      toast.error(mode === 'login' ? 'Failed to login' : 'Failed to create account');
-      console.error(error);
+    } catch (err) {
+      console.error('Authentication error:', err);
+      setError('Authentication failed. Please check your credentials and try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
+  
   return (
-    <div className="glass-card max-w-md w-full mx-auto p-8">
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        {mode === 'login' ? 'Welcome Back' : 'Create an Account'}
-      </h2>
+    <div className="glass-card p-8">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-bold mb-2">
+          {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+        </h1>
+        <p className="text-muted-foreground">
+          {mode === 'login' 
+            ? 'Sign in to your account to continue your journey' 
+            : 'Join our community of travelers and explorers'}
+        </p>
+      </div>
       
-      <Form {...activeForm}>
-        <form onSubmit={activeForm.handleSubmit(onSubmit)} className="space-y-5">
-          {mode === 'signup' && (
-            <FormField
-              control={signupForm.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter your name" className="input-field" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+      {error && (
+        <div className="bg-destructive/10 text-destructive rounded-md p-3 mb-6">
+          {error}
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {mode === 'signup' && (
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input 
+                id="name"
+                type="text"
+                placeholder="Enter your name"
+                className="pl-10"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+        )}
+        
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
+            <Input 
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              className="pl-10"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
-          )}
-          
-          <FormField
-            control={activeForm.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter your email" type="email" className="input-field" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={activeForm.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input 
-                      placeholder="Enter your password" 
-                      type={showPassword ? 'text' : 'password'} 
-                      className="input-field pr-10" 
-                      {...field} 
-                    />
-                    <button 
-                      type="button"
-                      tabIndex={-1}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={togglePasswordVisibility}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          {mode === 'signup' && (
-            <FormField
-              control={signupForm.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Confirm your password" 
-                      type={showPassword ? 'text' : 'password'} 
-                      className="input-field" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
+            <Input 
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              className="pl-10"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
             />
-          )}
-          
-          <Button 
-            type="submit" 
-            className="w-full btn-primary" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === 'login' ? 'Login' : 'Create Account'}
-          </Button>
-          
-          <p className="text-center text-sm text-muted-foreground mt-4">
-            {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
-            <Link 
-              to={mode === 'login' ? '/signup' : '/login'} 
-              className="text-primary hover:underline"
-            >
-              {mode === 'login' ? 'Sign up' : 'Login'}
+          </div>
+        </div>
+        
+        {mode === 'login' && (
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+              Forgot password?
             </Link>
-          </p>
-        </form>
-      </Form>
+          </div>
+        )}
+        
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 size={18} className="mr-2 animate-spin" />
+              {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+            </>
+          ) : (
+            mode === 'login' ? 'Sign In' : 'Create Account'
+          )}
+        </Button>
+        
+        <div className="mt-6 text-center text-sm">
+          {mode === 'login' ? (
+            <p>
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-primary hover:underline font-medium">
+                Sign up
+              </Link>
+            </p>
+          ) : (
+            <p>
+              Already have an account?{' '}
+              <Link to="/login" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
+          )}
+        </div>
+      </form>
     </div>
   );
 };
