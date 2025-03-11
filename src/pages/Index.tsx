@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Users, Map, CreditCard, Shield, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,14 +9,14 @@ import Footer from '@/components/layout/Footer';
 
 const Index = () => {
   const navigate = useNavigate();
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const handleGetStarted = () => {
-    window.scrollTo(0, 0); // Scroll to top first
     navigate('/signup');
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" ref={contentRef}>
       <Navbar />
       
       <main className="flex-1 page-transition">
@@ -39,10 +40,7 @@ const Index = () => {
                   variant="default" 
                   size="lg" 
                   className="btn-primary w-full sm:w-auto"
-                  onClick={() => {
-                    window.scrollTo(0, 0);
-                    navigate('/travel-rooms');
-                  }}
+                  onClick={() => navigate('/travel-rooms')}
                 >
                   Explore Trips <ChevronRight size={18} />
                 </Button>
@@ -160,11 +158,14 @@ const Index = () => {
             </div>
             
             <div className="mt-12 text-center">
-              <Link to="/signup">
-                <Button variant="default" size="lg" className="btn-primary">
-                  Get Started <ArrowRight size={18} className="ml-2" />
-                </Button>
-              </Link>
+              <Button 
+                variant="default" 
+                size="lg" 
+                className="btn-primary"
+                onClick={handleGetStarted}
+              >
+                Get Started <ArrowRight size={18} className="ml-2" />
+              </Button>
             </div>
           </div>
         </section>
@@ -198,4 +199,3 @@ const Index = () => {
 };
 
 export default Index;
-

@@ -12,73 +12,23 @@ import Footer from '@/components/layout/Footer';
 import AppBadge from '@/components/ui-elements/AppBadge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { TripData } from '@/components/ui-elements/TravelCard';
-
-// Mock trip details - would be replaced with API call
-const getMockTrip = (tripId: string): TripData & {
-  description: string;
-  itinerary: string[];
-  food: string;
-  accommodation: string;
-  transportation: string;
-  members: {id: string; name: string}[];
-} => {
-  return {
-    id: tripId,
-    title: 'Backpacking in Himachal',
-    destination: 'Manali, Himachal Pradesh',
-    imageUrl: 'https://images.unsplash.com/photo-1626621331169-5f34be280ed9',
-    startDate: '2023-12-15',
-    endDate: '2023-12-22',
-    price: 8000,
-    totalSpots: 10,
-    spotsLeft: 4,
-    organizer: {
-      name: 'Rahul Singh',
-      id: 'user1',
-    },
-    description: 'Join us for a week-long backpacking adventure in the beautiful mountains of Himachal Pradesh. We\'ll explore stunning landscapes, visit local villages, and experience the unique culture of the region. This trip is perfect for adventure seekers who love nature and are looking for an affordable way to explore the Himalayas.',
-    itinerary: [
-      'Day 1: Arrival in Manali, welcome dinner',
-      'Day 2: Local sightseeing and acclimatization',
-      'Day 3: Trek to Jogini Waterfall',
-      'Day 4: Visit to Solang Valley',
-      'Day 5: Day trip to Naggar Castle and Roerich Art Gallery',
-      'Day 6: Explore Old Manali and riverside cafes',
-      'Day 7: Free day for shopping or optional activities',
-      'Day 8: Departure day'
-    ],
-    food: 'Most meals will be at local restaurants and cafes. We\'ll have group dinners at least 3 times during the trip. Breakfast is included at our accommodation.',
-    accommodation: 'Shared rooms in a budget-friendly hostel in Old Manali. All rooms have basic amenities and hot water.',
-    transportation: 'Local buses and shared taxis for day trips. Airport pickup can be arranged for an additional fee.',
-    members: [
-      { id: 'user1', name: 'Rahul Singh' },
-      { id: 'user2', name: 'Priya Sharma' },
-      { id: 'user3', name: 'Amit Kumar' },
-      { id: 'user4', name: 'Neha Patel' },
-      { id: 'user5', name: 'Vikram Chauhan' },
-      { id: 'user6', name: 'Deepa Nair' }
-    ]
-  };
-};
+import { fetchTripById, joinTrip, Trip } from '@/services/api';
 
 const TripDetails = () => {
-  const { tripId } = useParams<{ tripId: string }>();
-  const [trip, setTrip] = useState<ReturnType<typeof getMockTrip> | null>(null);
+  const { id } = useParams<{ id: string }>();
+  const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Simulate API fetch
     const fetchTripDetails = async () => {
       setIsLoading(true);
       try {
-        // This would be an API call in a real application
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        if (tripId) {
-          setTrip(getMockTrip(tripId));
+        if (id) {
+          const data = await fetchTripById(id);
+          setTrip(data);
         }
       } catch (error) {
         console.error('Error fetching trip details:', error);
@@ -89,7 +39,7 @@ const TripDetails = () => {
     };
 
     fetchTripDetails();
-  }, [tripId]);
+  }, [id]);
 
   const handleJoinTrip = async () => {
     if (!isAuthenticated) {
@@ -100,25 +50,27 @@ const TripDetails = () => {
 
     setIsJoining(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!user || !trip) return;
       
       // Check if user has reached free trip limit
-      if (user && user.tripCount >= 2 && !user.hasPaid) {
+      if (user.tripCount >= 2 && !user.hasPaid) {
         navigate('/profile?showPayment=true');
         toast.error('You\'ve reached your free trip limit. Please subscribe to join more trips.');
         return;
       }
       
-      toast.success('Successfully joined the trip!');
+      const result = await joinTrip(trip._id, user.id);
       
-      // Update trip details to reflect the user has joined
-      if (trip) {
+      if (result.success) {
+        toast.success('Successfully joined the trip!');
+        
+        // Update trip details to reflect the user has joined
         setTrip({
           ...trip,
-          spotsLeft: trip.spotsLeft - 1,
-          members: [...trip.members, { id: user!.id, name: user!.name }]
+          members: [...trip.members, { id: user.id, name: user.name }]
         });
+      } else {
+        toast.error('Failed to join trip');
       }
     } catch (error) {
       console.error('Error joining trip:', error);
@@ -140,6 +92,11 @@ const TripDetails = () => {
     return trip?.members.some(member => user && member.id === user.id);
   };
 
+  const getSpotsLeft = () => {
+    if (!trip) return 0;
+    return trip.maxParticipants - trip.members.length;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -147,7 +104,7 @@ const TripDetails = () => {
         
         <main className="flex-1 pt-32 pb-16 flex items-center justify-center">
           <div className="flex flex-col items-center">
-            <div className="h-12 w-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-4"></div>
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
             <p className="text-muted-foreground">Loading trip details...</p>
           </div>
         </main>
@@ -183,6 +140,8 @@ const TripDetails = () => {
     );
   }
 
+  const spotsLeft = getSpotsLeft();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -202,14 +161,14 @@ const TripDetails = () => {
           {/* Trip hero */}
           <div className="relative rounded-xl overflow-hidden mb-12">
             <img 
-              src={trip.imageUrl}
+              src={trip.image}
               alt={trip.title}
               className="w-full h-[400px] object-cover"
             />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 <AppBadge variant="primary">
-                  {trip.spotsLeft > 0 ? `${trip.spotsLeft} spots left` : 'Full'}
+                  {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Full'}
                 </AppBadge>
                 <AppBadge variant="outline" className="bg-black/30 border-white/20">
                   <Calendar size={14} className="mr-1" />
@@ -295,7 +254,7 @@ const TripDetails = () => {
               {/* Participants */}
               <section className="glass-card p-6">
                 <h2 className="text-2xl font-semibold mb-4">
-                  Participants ({trip.members.length}/{trip.totalSpots})
+                  Participants ({trip.members.length}/{trip.maxParticipants})
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {trip.members.map((member) => (
@@ -326,11 +285,7 @@ const TripDetails = () => {
               <div className="glass-card p-6 sticky top-24">
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold mb-1">
-                    {new Intl.NumberFormat('en-IN', {
-                      style: 'currency',
-                      currency: 'INR',
-                      minimumFractionDigits: 0,
-                    }).format(trip.price)}
+                    ₹{trip.price}
                   </h2>
                   <p className="text-muted-foreground text-sm">per person</p>
                 </div>
@@ -351,7 +306,7 @@ const TripDetails = () => {
                     <div>
                       <p className="text-sm font-medium">Group Size</p>
                       <p className="text-muted-foreground text-sm">
-                        {trip.totalSpots} people max
+                        {trip.maxParticipants} people max
                       </p>
                     </div>
                   </div>
@@ -379,7 +334,7 @@ const TripDetails = () => {
                 
                 {/* Action buttons */}
                 <div className="space-y-3">
-                  {trip.spotsLeft > 0 && !isUserJoined() ? (
+                  {spotsLeft > 0 && !isUserJoined() ? (
                     <Button
                       className="w-full btn-primary h-12"
                       onClick={handleJoinTrip}

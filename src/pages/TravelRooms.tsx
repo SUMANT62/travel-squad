@@ -1,88 +1,53 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Plus, MapPin, Users, Calendar } from 'lucide-react';
+import { Search, Filter, Plus, MapPin, Users, Calendar, Loader2, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from "sonner";
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import AppBadge from '@/components/ui-elements/AppBadge';
 import { useAuth } from '@/context/AuthContext';
-
-// Mock trip data for demonstration
-const mockTrips = [
-  {
-    id: 1,
-    title: 'Weekend Getaway to Goa',
-    destination: 'Goa, India',
-    image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    startDate: 'June 15, 2023',
-    duration: '3 days',
-    cost: '₹8,000',
-    participants: 4,
-    maxParticipants: 6
-  },
-  {
-    id: 2,
-    title: 'Backpacking through Manali',
-    destination: 'Manali, India',
-    image: 'https://images.unsplash.com/photo-1626621331169-5f34be280cbc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    startDate: 'July 10, 2023',
-    duration: '5 days',
-    cost: '₹12,500',
-    participants: 3,
-    maxParticipants: 5
-  },
-  {
-    id: 3,
-    title: 'Cultural Tour in Rajasthan',
-    destination: 'Jaipur, India',
-    image: 'https://images.unsplash.com/photo-1599661046827-9dae0a7e0604?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    startDate: 'August 5, 2023',
-    duration: '7 days',
-    cost: '₹20,000',
-    participants: 6,
-    maxParticipants: 10
-  },
-  {
-    id: 4,
-    title: 'Trek to Valley of Flowers',
-    destination: 'Uttarakhand, India',
-    image: 'https://images.unsplash.com/photo-1592909632733-f5f365c93350?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    startDate: 'July 25, 2023',
-    duration: '6 days',
-    cost: '₹15,000',
-    participants: 7,
-    maxParticipants: 12
-  },
-  {
-    id: 5,
-    title: 'Beach Holiday in Andaman',
-    destination: 'Andaman Islands, India',
-    image: 'https://images.unsplash.com/photo-1588416499018-d8c621effb4d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    startDate: 'September 12, 2023',
-    duration: '8 days',
-    cost: '₹35,000',
-    participants: 4,
-    maxParticipants: 8
-  },
-  {
-    id: 6,
-    title: 'Spiritual Retreat in Varanasi',
-    destination: 'Varanasi, India',
-    image: 'https://images.unsplash.com/photo-1561361058-c24cecde1c3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    startDate: 'October 1, 2023',
-    duration: '4 days',
-    cost: '₹10,000',
-    participants: 5,
-    maxParticipants: 15
-  }
-];
+import { fetchTrips, Trip } from '@/services/api';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog";
 
 const TravelRooms = () => {
   const { isAuthenticated } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredTrips, setFilteredTrips] = useState(mockTrips);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [currentShareUrl, setCurrentShareUrl] = useState('');
+  const [currentShareTitle, setCurrentShareTitle] = useState('');
+  
+  // Fetch trips from API
+  useEffect(() => {
+    const getTrips = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchTrips();
+        setTrips(data);
+        setFilteredTrips(data);
+      } catch (error) {
+        console.error("Failed to fetch trips:", error);
+        toast.error("Failed to load trips. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    getTrips();
+  }, []);
   
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,16 +55,70 @@ const TravelRooms = () => {
     setSearchTerm(term);
     
     if (term.trim() === '') {
-      setFilteredTrips(mockTrips);
+      setFilteredTrips(trips);
     } else {
       setFilteredTrips(
-        mockTrips.filter(trip => 
+        trips.filter(trip => 
           trip.title.toLowerCase().includes(term) || 
           trip.destination.toLowerCase().includes(term)
         )
       );
     }
   };
+
+  // Handle sharing
+  const handleShare = (e: React.MouseEvent, trip: Trip) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const shareUrl = `${window.location.origin}/trips/${trip._id}`;
+    setCurrentShareUrl(shareUrl);
+    setCurrentShareTitle(trip.title);
+    setShareDialogOpen(true);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(currentShareUrl);
+    toast.success("Link copied to clipboard!");
+    setShareDialogOpen(false);
+  };
+
+  // Share via platforms
+  const shareVia = (platform: 'whatsapp' | 'facebook' | 'twitter') => {
+    let shareLink = '';
+    const encodedUrl = encodeURIComponent(currentShareUrl);
+    const encodedTitle = encodeURIComponent(currentShareTitle);
+    
+    switch (platform) {
+      case 'whatsapp':
+        shareLink = `https://wa.me/?text=${encodedTitle} - ${encodedUrl}`;
+        break;
+      case 'facebook':
+        shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+        break;
+      case 'twitter':
+        shareLink = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
+        break;
+    }
+    
+    window.open(shareLink, '_blank');
+    setShareDialogOpen(false);
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 pt-32 pb-16 flex items-center justify-center page-transition">
+          <div className="flex flex-col items-center">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Loading trips...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -150,54 +169,65 @@ const TravelRooms = () => {
           {/* Trips Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTrips.map(trip => (
-              <Link to={`/trips/${trip.id}`} key={trip.id}>
-                <div className="group rounded-xl overflow-hidden bg-background border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-soft">
-                  {/* Trip Image */}
-                  <div className="relative h-48 overflow-hidden">
-                    <img 
-                      src={trip.image} 
-                      alt={trip.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 p-4 w-full">
-                      <h3 className="text-white font-medium text-lg line-clamp-1">
-                        {trip.title}
-                      </h3>
-                      <div className="flex items-center text-white/80 text-sm">
-                        <MapPin size={14} className="mr-1" />
-                        <span>{trip.destination}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Trip Info */}
-                  <div className="p-4">
-                    <div className="flex flex-wrap justify-between gap-y-2 text-sm">
-                      <div className="flex items-center text-muted-foreground">
-                        <Calendar size={14} className="mr-1" />
-                        <span>{trip.startDate} · {trip.duration}</span>
-                      </div>
-                      <div className="flex items-center text-muted-foreground">
-                        <Users size={14} className="mr-1" />
-                        <span>{trip.participants}/{trip.maxParticipants}</span>
+              <div key={trip._id} className="relative">
+                <Link to={`/trips/${trip._id}`}>
+                  <div className="group rounded-xl overflow-hidden bg-background border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-soft h-full">
+                    {/* Trip Image */}
+                    <div className="relative h-48 overflow-hidden">
+                      <img 
+                        src={trip.image} 
+                        alt={trip.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                      <div className="absolute bottom-0 left-0 p-4 w-full">
+                        <h3 className="text-white font-medium text-lg line-clamp-1">
+                          {trip.title}
+                        </h3>
+                        <div className="flex items-center text-white/80 text-sm">
+                          <MapPin size={14} className="mr-1" />
+                          <span>{trip.destination}</span>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center mt-3">
-                      <span className="font-medium">{trip.cost} per person</span>
-                      <Button variant="ghost" size="sm" className="text-primary">
-                        View Details
-                      </Button>
+                    {/* Trip Info */}
+                    <div className="p-4">
+                      <div className="flex flex-wrap justify-between gap-y-2 text-sm">
+                        <div className="flex items-center text-muted-foreground">
+                          <Calendar size={14} className="mr-1" />
+                          <span>{new Date(trip.startDate).toLocaleDateString()} · {trip.duration}</span>
+                        </div>
+                        <div className="flex items-center text-muted-foreground">
+                          <Users size={14} className="mr-1" />
+                          <span>{trip.members.length}/{trip.maxParticipants}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mt-3">
+                        <span className="font-medium">₹{trip.price} per person</span>
+                        <Button variant="ghost" size="sm" className="text-primary">
+                          View Details
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+                {/* Share button */}
+                <Button 
+                  variant="secondary"
+                  size="icon"
+                  className="absolute top-3 left-3 h-8 w-8 rounded-full bg-background/80 hover:bg-background"
+                  onClick={(e) => handleShare(e, trip)}
+                >
+                  <Share2 size={14} />
+                </Button>
+              </div>
             ))}
           </div>
           
           {/* Empty state */}
-          {filteredTrips.length === 0 && (
+          {filteredTrips.length === 0 && !isLoading && (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <MapPin size={24} className="text-primary" />
@@ -206,13 +236,74 @@ const TravelRooms = () => {
               <p className="text-muted-foreground mb-6">
                 We couldn't find any trips matching your search criteria.
               </p>
-              <Button onClick={() => {setSearchTerm(''); setFilteredTrips(mockTrips);}}>
+              <Button onClick={() => {setSearchTerm(''); setFilteredTrips(trips);}}>
                 Clear Search
               </Button>
             </div>
           )}
         </div>
       </main>
+      
+      {/* Share Dialog */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share This Trip</DialogTitle>
+            <DialogDescription>
+              Share this amazing trip opportunity with your friends
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="my-4">
+            <p className="text-sm font-medium mb-2">Share via:</p>
+            <div className="flex gap-3 mb-6">
+              <Button 
+                variant="outline" 
+                className="flex-1" 
+                onClick={() => shareVia('whatsapp')}
+              >
+                WhatsApp
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => shareVia('facebook')}
+              >
+                Facebook
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => shareVia('twitter')}
+              >
+                Twitter
+              </Button>
+            </div>
+            
+            <p className="text-sm font-medium mb-2">Or copy link:</p>
+            <div className="flex items-center">
+              <Input 
+                value={currentShareUrl} 
+                readOnly 
+                className="flex-1"
+              />
+              <Button 
+                variant="secondary" 
+                className="ml-2"
+                onClick={copyToClipboard}
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Footer />
     </div>

@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Users, MapPin, Calendar, ArrowRight } from 'lucide-react';
+import { Users, MapPin, Calendar, ArrowRight, Share2 } from 'lucide-react';
 import AppBadge from './AppBadge';
+import { Button } from '@/components/ui/button';
 
 export interface TripData {
   id: string;
@@ -22,9 +23,10 @@ export interface TripData {
 
 interface TravelCardProps {
   trip: TripData;
+  onShare?: (trip: TripData) => void;
 }
 
-const TravelCard: React.FC<TravelCardProps> = ({ trip }) => {
+const TravelCard: React.FC<TravelCardProps> = ({ trip, onShare }) => {
   const formattedPrice = new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
@@ -50,8 +52,16 @@ const TravelCard: React.FC<TravelCardProps> = ({ trip }) => {
     }
   };
 
+  const handleShare = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onShare) {
+      onShare(trip);
+    }
+  };
+
   return (
-    <div className="glass-card overflow-hidden group h-full flex flex-col">
+    <div className="glass-card overflow-hidden group h-full flex flex-col relative">
       <div className="relative">
         <img 
           src={trip.imageUrl || 'https://images.unsplash.com/photo-1682687981603-ae874bf432f2'} 
@@ -61,6 +71,15 @@ const TravelCard: React.FC<TravelCardProps> = ({ trip }) => {
         <div className="absolute top-3 right-3">
           {getTripStatus()}
         </div>
+        {/* Share button */}
+        <Button 
+          variant="secondary"
+          size="icon"
+          className="absolute top-3 left-3 h-8 w-8 rounded-full bg-background/80 hover:bg-background"
+          onClick={handleShare}
+        >
+          <Share2 size={14} />
+        </Button>
       </div>
       
       <div className="p-5 flex flex-col flex-grow">
@@ -90,7 +109,7 @@ const TravelCard: React.FC<TravelCardProps> = ({ trip }) => {
         
         <div className="mt-auto">
           <Link 
-            to={`/trip/${trip.id}`}
+            to={`/trips/${trip.id}`}
             className="flex items-center justify-center w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             View Details <ArrowRight size={16} className="ml-1" />
