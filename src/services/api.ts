@@ -65,6 +65,20 @@ export const fetchTripById = async (id: string): Promise<Trip> => {
   }
 };
 
+// Fetch trips created by or joined by a user
+export const fetchUserTrips = async (userId: string): Promise<Trip[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/trips`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
 // Join a trip
 export const joinTrip = async (tripId: string, userId: string): Promise<{ success: boolean }> => {
   try {

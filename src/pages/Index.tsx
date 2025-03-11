@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Users, Map, CreditCard, Shield, ArrowRight } from 'lucide-react';
@@ -9,14 +8,13 @@ import Footer from '@/components/layout/Footer';
 
 const Index = () => {
   const navigate = useNavigate();
-  const contentRef = useRef<HTMLDivElement>(null);
 
   const handleGetStarted = () => {
     navigate('/signup');
   };
 
   return (
-    <div className="min-h-screen flex flex-col" ref={contentRef}>
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       
       <main className="flex-1 page-transition">

@@ -1,17 +1,45 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, MapPin, Calendar, CreditCard } from 'lucide-react';
+import { User, MapPin, Calendar, CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { fetchUserTrips } from '@/services/api';
+import { Trip } from '@/services/api';
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [userTrips, setUserTrips] = useState<Trip[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // If user is authenticated, fetch their trips
+    if (user) {
+      const loadUserTrips = async () => {
+        setIsLoading(true);
+        try {
+          const trips = await fetchUserTrips(user.id);
+          setUserTrips(trips);
+        } catch (error) {
+          console.error('Error fetching user trips:', error);
+          toast({
+            title: "Error loading trips",
+            description: "Could not load your trips. Please try again later.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadUserTrips();
+    }
+  }, [user, toast]);
 
   if (!user) {
     // Redirect to login if not authenticated
@@ -50,7 +78,7 @@ const Profile = () => {
                   <div className="w-full">
                     <div className="flex justify-between mb-2">
                       <span className="text-muted-foreground">Trips</span>
-                      <span>{user.tripCount}</span>
+                      <span>{userTrips.length}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Premium</span>
@@ -72,23 +100,26 @@ const Profile = () => {
               <div className="w-full md:w-2/3 space-y-6">
                 <div className="glass-card p-6">
                   <h3 className="text-lg font-medium mb-4">Your Trips</h3>
-                  {user.tripCount > 0 ? (
+                  {isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 size={30} className="animate-spin text-primary" />
+                    </div>
+                  ) : userTrips.length > 0 ? (
                     <div className="space-y-4">
-                      {/* For demo purposes - would be actual trips from API */}
-                      {[...Array(Math.min(user.tripCount, 3))].map((_, index) => (
+                      {userTrips.map((trip, index) => (
                         <div 
-                          key={index} 
+                          key={trip._id} 
                           className="flex items-center gap-4 p-3 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer"
-                          onClick={() => navigate(`/trips/${index + 1}`)}
+                          onClick={() => navigate(`/trips/${trip._id}`)}
                         >
                           <div className="w-12 h-12 bg-secondary rounded-md flex items-center justify-center">
                             <MapPin size={20} className="text-primary" />
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-medium">Trip to {['Paris', 'Tokyo', 'New York'][index % 3]}</h4>
+                            <h4 className="font-medium">{trip.title}</h4>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Calendar size={14} className="mr-1" />
-                              <span>May {index + 10}, 2023</span>
+                              <span>{new Date(trip.startDate).toLocaleDateString()}</span>
                             </div>
                           </div>
                         </div>
@@ -113,12 +144,12 @@ const Profile = () => {
                         <p className="text-sm text-muted-foreground">
                           {user.hasPaid 
                             ? 'Unlimited trips and premium features' 
-                            : 'Create up to 2 trips for free'}
+                            : `Free trips remaining: ${user.freeTripsLeft} of 2`}
                         </p>
                       </div>
                       <CreditCard size={24} className="text-primary" />
                     </div>
-                    {!user.hasPaid && user.tripCount >= 2 && (
+                    {!user.hasPaid && user.freeTripsLeft === 0 && (
                       <Button className="w-full">
                         Upgrade to Premium (₹10/trip)
                       </Button>
