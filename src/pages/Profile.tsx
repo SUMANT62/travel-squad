@@ -9,43 +9,42 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { fetchUserTrips } from '@/services/api';
 import { Trip } from '@/services/api';
+import { useQuery } from '@tanstack/react-query';
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [userTrips, setUserTrips] = useState<Trip[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Use React Query to fetch user trips
+  const { 
+    data: userTrips = [], 
+    isLoading,
+    error 
+  } = useQuery({
+    queryKey: ['userTrips', user?.id],
+    queryFn: () => user ? fetchUserTrips(user.id) : Promise.resolve([]),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    onError: (err: any) => {
+      console.error('Error fetching user trips:', err);
+      toast({
+        title: "Error loading trips",
+        description: "Could not load your trips. Please try again later.",
+        variant: "destructive"
+      });
+    }
+  });
 
   useEffect(() => {
-    // If user is authenticated, fetch their trips
-    if (user) {
-      const loadUserTrips = async () => {
-        setIsLoading(true);
-        try {
-          const trips = await fetchUserTrips(user.id);
-          setUserTrips(trips);
-        } catch (error) {
-          console.error('Error fetching user trips:', error);
-          toast({
-            title: "Error loading trips",
-            description: "Could not load your trips. Please try again later.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      loadUserTrips();
-    }
-  }, [user, toast]);
-
-  if (!user) {
-    // Redirect to login if not authenticated
-    React.useEffect(() => {
+    // If user is not authenticated, redirect to login
+    if (!user) {
       navigate('/login');
-    }, [navigate]);
+    }
+  }, [user, navigate]);
+
+  // Handle user not authenticated
+  if (!user) {
     return null;
   }
 
@@ -56,6 +55,7 @@ const Profile = () => {
       description: "You have been logged out of your account",
     });
     navigate('/');
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -106,11 +106,14 @@ const Profile = () => {
                     </div>
                   ) : userTrips.length > 0 ? (
                     <div className="space-y-4">
-                      {userTrips.map((trip, index) => (
+                      {userTrips.map((trip) => (
                         <div 
                           key={trip._id} 
                           className="flex items-center gap-4 p-3 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer"
-                          onClick={() => navigate(`/trips/${trip._id}`)}
+                          onClick={() => {
+                            navigate(`/trips/${trip._id}`);
+                            window.scrollTo(0, 0);
+                          }}
                         >
                           <div className="w-12 h-12 bg-secondary rounded-md flex items-center justify-center">
                             <MapPin size={20} className="text-primary" />
@@ -128,7 +131,12 @@ const Profile = () => {
                   ) : (
                     <div className="text-center py-6">
                       <p className="text-muted-foreground mb-4">You haven't created or joined any trips yet.</p>
-                      <Button onClick={() => navigate('/create-trip')}>
+                      <Button 
+                        onClick={() => {
+                          navigate('/create-trip');
+                          window.scrollTo(0, 0);
+                        }}
+                      >
                         Create Your First Trip
                       </Button>
                     </div>

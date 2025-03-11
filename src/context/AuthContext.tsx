@@ -1,5 +1,6 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { loginUser, registerUser } from '@/services/api';
 
 type User = {
   id: string;
@@ -7,7 +8,7 @@ type User = {
   name: string;
   tripCount: number;
   hasPaid: boolean;
-  freeTripsLeft: number; // Track free trips
+  freeTripsLeft: number;
 };
 
 type AuthContextType = {
@@ -17,11 +18,8 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
-  updateTripCount: () => Promise<boolean>; // Returns if user still has free trips
+  updateTripCount: () => Promise<boolean>;
 };
-
-// API URL - will need to be updated with your actual API URL when deployed
-const API_URL = "http://localhost:3000/api";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -30,34 +28,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check auth status with backend
+    // Check if user is already logged in
     const checkAuthStatus = async () => {
       try {
         const token = localStorage.getItem('travelAppToken');
+        const userData = localStorage.getItem('travelAppUser');
         
-        if (!token) {
+        if (!token || !userData) {
           setIsLoading(false);
           return;
         }
         
-        // In a real implementation, we would validate the token with our backend
-        const response = await fetch(`${API_URL}/auth/validate`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        } else {
-          // Token invalid, clear it
-          localStorage.removeItem('travelAppToken');
-        }
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
       } catch (error) {
         console.error('Auth validation error:', error);
         localStorage.removeItem('travelAppToken');
+        localStorage.removeItem('travelAppUser');
       } finally {
         setIsLoading(false);
       }
@@ -69,36 +56,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // For now, we'll simulate API call since backend isn't built yet
-      // Replace with actual API call when backend is ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await loginUser(email, password);
       
-      // Simulate successful login for now
-      const demoUser = {
-        id: `user-${Math.floor(Math.random() * 10000)}`,
-        email,
-        name: email.split('@')[0],
-        tripCount: 0,
-        hasPaid: false,
-        freeTripsLeft: 2
+      // Transform the response to match our User type
+      const userData: User = {
+        id: response._id,
+        email: response.email,
+        name: response.name,
+        tripCount: response.tripCount,
+        hasPaid: response.hasPaid,
+        freeTripsLeft: response.freeTripsLeft
       };
       
-      setUser(demoUser);
-      localStorage.setItem('travelAppToken', 'demo-token');
-      
-      /* Actual implementation would be:
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      
-      if (!response.ok) throw new Error('Login failed');
-      
-      const { user, token } = await response.json();
-      setUser(user);
-      localStorage.setItem('travelAppToken', token);
-      */
+      setUser(userData);
+      localStorage.setItem('travelAppToken', response.token);
+      localStorage.setItem('travelAppUser', JSON.stringify(userData));
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -110,36 +82,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      // For now, we'll simulate API call since backend isn't built yet
-      // Replace with actual API call when backend is ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await registerUser(name, email, password);
       
-      // Simulate successful signup for now
-      const newUser = {
-        id: `user-${Math.floor(Math.random() * 10000)}`,
-        email,
-        name,
-        tripCount: 0,
-        hasPaid: false,
-        freeTripsLeft: 2
+      // Transform the response to match our User type
+      const userData: User = {
+        id: response._id,
+        email: response.email,
+        name: response.name,
+        tripCount: response.tripCount,
+        hasPaid: response.hasPaid,
+        freeTripsLeft: response.freeTripsLeft
       };
       
-      setUser(newUser);
-      localStorage.setItem('travelAppToken', 'demo-token');
-      
-      /* Actual implementation would be:
-      const response = await fetch(`${API_URL}/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
-      });
-      
-      if (!response.ok) throw new Error('Signup failed');
-      
-      const { user, token } = await response.json();
-      setUser(user);
-      localStorage.setItem('travelAppToken', token);
-      */
+      setUser(userData);
+      localStorage.setItem('travelAppToken', response.token);
+      localStorage.setItem('travelAppUser', JSON.stringify(userData));
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
@@ -152,7 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return false;
     
     try {
-      // Update user trip count
+      // Here you would make an API call to update the trip count
+      // For now we'll just update the local state
       const updatedUser = {
         ...user,
         tripCount: user.tripCount + 1,
@@ -160,25 +118,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setUser(updatedUser);
+      localStorage.setItem('travelAppUser', JSON.stringify(updatedUser));
       
-      // Return if user still has free trips
       return updatedUser.freeTripsLeft > 0;
-      
-      /* Actual implementation would be:
-      const response = await fetch(`${API_URL}/users/increment-trip-count`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('travelAppToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) throw new Error('Failed to update trip count');
-      
-      const updatedUser = await response.json();
-      setUser(updatedUser);
-      return updatedUser.freeTripsLeft > 0;
-      */
     } catch (error) {
       console.error('Error updating trip count:', error);
       return false;
@@ -188,15 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     localStorage.removeItem('travelAppToken');
-    
-    /* Actual implementation might include:
-    fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('travelAppToken')}`
-      }
-    }).catch(err => console.error('Logout error:', err));
-    */
+    localStorage.removeItem('travelAppUser');
   };
 
   return (

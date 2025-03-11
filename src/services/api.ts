@@ -1,7 +1,7 @@
 
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://localhost:5000/api"; // Change to your Node.js server URL
+const API_BASE_URL = "http://localhost:5000/api"; // Node.js backend URL
 
 export interface Trip {
   _id: string;
@@ -29,108 +29,106 @@ export interface Trip {
   }[];
 }
 
-// Error handling helper
-const handleApiError = (error: any): never => {
-  console.error("API Error:", error);
-  const errorMessage = error.response?.data?.message || "An error occurred while connecting to server";
-  toast.error(errorMessage);
-  throw error;
+// Helper function to get auth token
+const getToken = () => {
+  return localStorage.getItem('travelAppToken');
 };
 
-// Fetch all trips
+// Helper function for API requests
+const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const token = getToken();
+  
+  const defaultHeaders: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    defaultHeaders['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const config: RequestInit = {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers,
+    },
+  };
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error: any) {
+    console.error("API Error:", error);
+    const errorMessage = error.message || "An error occurred while connecting to server";
+    toast.error(errorMessage);
+    throw error;
+  }
+};
+
+// Auth API
+export const registerUser = async (name: string, email: string, password: string) => {
+  return apiRequest('/users/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, password }),
+  });
+};
+
+export const loginUser = async (email: string, password: string) => {
+  return apiRequest('/users/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+};
+
+export const updateUserTripCount = async () => {
+  return apiRequest('/users/increment-trip-count', {
+    method: 'POST',
+  });
+};
+
+// Trip API
 export const fetchTrips = async (): Promise<Trip[]> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/trips`);
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return handleApiError(error);
-  }
+  return apiRequest('/trips');
 };
 
-// Fetch a single trip
 export const fetchTripById = async (id: string): Promise<Trip> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/trips/${id}`);
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return handleApiError(error);
-  }
+  return apiRequest(`/trips/${id}`);
 };
 
-// Fetch trips created by or joined by a user
 export const fetchUserTrips = async (userId: string): Promise<Trip[]> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/users/${userId}/trips`);
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return handleApiError(error);
-  }
+  return apiRequest(`/users/${userId}/trips`);
 };
 
-// Join a trip
-export const joinTrip = async (tripId: string, userId: string): Promise<{ success: boolean }> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/trips/${tripId}/join`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return handleApiError(error);
-  }
+export const joinTrip = async (tripId: string, userId: string, userName: string): Promise<{ success: boolean }> => {
+  return apiRequest(`/trips/${tripId}/join`, {
+    method: 'POST',
+    body: JSON.stringify({ userId, userName }),
+  });
 };
 
-// Create a new trip
 export const createTrip = async (tripData: Omit<Trip, '_id'>): Promise<Trip> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/trips`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(tripData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return handleApiError(error);
-  }
+  return apiRequest('/trips', {
+    method: 'POST',
+    body: JSON.stringify(tripData),
+  });
 };
 
-// Upload image
+// Upload API
 export const uploadImage = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('image', file);
+  
   try {
-    const formData = new FormData();
-    formData.append('image', file);
-    
+    const token = getToken();
     const response = await fetch(`${API_BASE_URL}/upload`, {
       method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       body: formData,
     });
     
@@ -140,7 +138,9 @@ export const uploadImage = async (file: File): Promise<string> => {
     
     const data = await response.json();
     return data.imageUrl;
-  } catch (error) {
-    return handleApiError(error);
+  } catch (error: any) {
+    console.error("API Error:", error);
+    toast.error("Failed to upload image. Please try again.");
+    throw error;
   }
 };

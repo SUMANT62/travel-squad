@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Users, Map, CreditCard, Shield, ArrowRight } from 'lucide-react';
@@ -9,8 +10,11 @@ import Footer from '@/components/layout/Footer';
 const Index = () => {
   const navigate = useNavigate();
 
+  // Handle navigation to signup page
   const handleGetStarted = () => {
     navigate('/signup');
+    // Ensure we scroll to the top of the page
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -38,7 +42,10 @@ const Index = () => {
                   variant="default" 
                   size="lg" 
                   className="btn-primary w-full sm:w-auto"
-                  onClick={() => navigate('/travel-rooms')}
+                  onClick={() => {
+                    navigate('/travel-rooms');
+                    window.scrollTo(0, 0);
+                  }}
                 >
                   Explore Trips <ChevronRight size={18} />
                 </Button>
