@@ -1,114 +1,57 @@
-
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { 
-  Calendar, MapPin, Users, DollarSign, Utensils, Bed, 
-  Bus, Globe, ChevronLeft, Share2, Heart, MessageSquare, 
-  Loader2
-} from 'lucide-react';
-import { toast } from 'sonner';
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapPin, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import AppBadge from '@/components/ui-elements/AppBadge';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 import { fetchTripById, joinTrip, Trip } from '@/services/api';
+import { useQuery } from '@tanstack/react-query';
 
 const TripDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isJoining, setIsJoining] = useState(false);
-  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchTripDetails = async () => {
-      setIsLoading(true);
-      try {
-        if (id) {
-          const data = await fetchTripById(id);
-          setTrip(data);
-        }
-      } catch (error) {
-        console.error('Error fetching trip details:', error);
-        toast.error('Failed to load trip details');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTripDetails();
-  }, [id]);
+  const { data: trip, isLoading } = useQuery({
+    queryKey: ['trip', id],
+    queryFn: () => id ? fetchTripById(id) : null,
+    enabled: !!id
+  });
 
   const handleJoinTrip = async () => {
-    if (!isAuthenticated) {
-      toast.error('Please login to join this trip');
-      navigate('/login');
-      return;
-    }
-
-    setIsJoining(true);
+    if (!user || !trip) return;
+    
     try {
-      if (!user || !trip) return;
-      
-      // Check if user has reached free trip limit
-      if (user.tripCount >= 2 && !user.hasPaid) {
-        navigate('/profile?showPayment=true');
-        toast.error('You\'ve reached your free trip limit. Please subscribe to join more trips.');
-        return;
-      }
-      
-      const result = await joinTrip(trip._id, user.id);
-      
-      if (result.success) {
-        toast.success('Successfully joined the trip!');
-        
-        // Update trip details to reflect the user has joined
-        setTrip({
-          ...trip,
-          members: [...trip.members, { id: user.id, name: user.name }]
-        });
-      } else {
-        toast.error('Failed to join trip');
-      }
+      await joinTrip(trip._id, user.id, user.name);
+      toast({
+        title: "Successfully joined trip!",
+        description: "You have been added to the trip's participants.",
+      });
+      // Refetch trip data
+      // queryClient.invalidateQueries(['trip', id]);
     } catch (error) {
-      console.error('Error joining trip:', error);
-      toast.error('Failed to join trip');
-    } finally {
-      setIsJoining(false);
+      toast({
+        title: "Error joining trip",
+        description: "Could not join the trip. Please try again.",
+        variant: "destructive"
+      });
     }
-  };
-  
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const isUserJoined = () => {
-    return trip?.members.some(member => user && member.id === user.id);
-  };
-
-  const getSpotsLeft = () => {
-    if (!trip) return 0;
-    return trip.maxParticipants - trip.members.length;
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        
-        <main className="flex-1 pt-32 pb-16 flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Loading trip details...</p>
+        <main className="flex-1 pt-32 pb-16 page-transition">
+          <div className="container-custom">
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center">Loading trip details...</div>
+            </div>
           </div>
         </main>
-        
         <Footer />
       </div>
     );
@@ -118,29 +61,17 @@ const TripDetails = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        
-        <main className="flex-1 pt-32 pb-16">
+        <main className="flex-1 pt-32 pb-16 page-transition">
           <div className="container-custom">
-            <div className="text-center py-16">
-              <h2 className="text-2xl font-semibold mb-4">Trip Not Found</h2>
-              <p className="text-muted-foreground mb-6">
-                The trip you're looking for doesn't exist or has been removed.
-              </p>
-              <Link to="/travel-rooms">
-                <Button className="btn-primary">
-                  Browse Other Trips
-                </Button>
-              </Link>
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center">Trip not found.</div>
             </div>
           </div>
         </main>
-        
         <Footer />
       </div>
     );
   }
-
-  const spotsLeft = getSpotsLeft();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -148,237 +79,49 @@ const TripDetails = () => {
       
       <main className="flex-1 pt-32 pb-16 page-transition">
         <div className="container-custom">
-          {/* Back button */}
-          <div className="mb-6">
-            <Link 
-              to="/travel-rooms" 
-              className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft size={18} className="mr-1" /> Back to trips
-            </Link>
-          </div>
-          
-          {/* Trip hero */}
-          <div className="relative rounded-xl overflow-hidden mb-12">
-            <img 
-              src={trip.image}
-              alt={trip.title}
-              className="w-full h-[400px] object-cover"
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-              <div className="flex flex-wrap items-center gap-3 mb-3">
-                <AppBadge variant="primary">
-                  {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Full'}
-                </AppBadge>
-                <AppBadge variant="outline" className="bg-black/30 border-white/20">
-                  <Calendar size={14} className="mr-1" />
-                  {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
-                </AppBadge>
-                <AppBadge variant="outline" className="bg-black/30 border-white/20">
-                  <MapPin size={14} className="mr-1" />
-                  {trip.destination}
-                </AppBadge>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-                {trip.title}
-              </h1>
-              <p className="text-white/80">
-                Organized by {trip.organizer.name}
-              </p>
-            </div>
-          </div>
-          
-          {/* Content layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main content */}
-            <div className="lg:col-span-2">
-              {/* Description */}
-              <section className="glass-card p-6 mb-8">
-                <h2 className="text-2xl font-semibold mb-4">About This Trip</h2>
-                <p className="text-muted-foreground whitespace-pre-line">
-                  {trip.description}
-                </p>
-              </section>
+          <div className="max-w-3xl mx-auto">
+            <div className="glass-card p-8 space-y-6">
+              <h1 className="text-3xl font-bold">{trip.title}</h1>
               
-              {/* Itinerary */}
-              <section className="glass-card p-6 mb-8">
-                <h2 className="text-2xl font-semibold mb-4">Itinerary</h2>
-                <ul className="space-y-3">
-                  {trip.itinerary.map((day, index) => (
-                    <li key={index} className="flex">
-                      <span className="bg-primary/10 text-primary rounded-full w-8 h-8 flex items-center justify-center mr-3 shrink-0">
-                        {index + 1}
-                      </span>
-                      <span className="text-muted-foreground">{day}</span>
-                    </li>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center text-muted-foreground">
+                  <MapPin size={16} className="mr-1" />
+                  {trip.destination}
+                </div>
+                <div className="flex items-center text-muted-foreground">
+                  <Calendar size={16} className="mr-1" />
+                  {new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}
+                </div>
+              </div>
+              
+              <img src={trip.image} alt={trip.title} className="w-full rounded-md aspect-video object-cover" />
+              
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">About this Trip</h2>
+                <p>{trip.description}</p>
+              </div>
+              
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">Itinerary</h2>
+                <ul className="list-disc list-inside">
+                  {trip.itinerary.map((item, index) => (
+                    <li key={index}>{item}</li>
                   ))}
                 </ul>
-              </section>
-              
-              {/* Details grid */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {/* Accommodation */}
-                <div className="glass-card p-6">
-                  <div className="flex items-center mb-4">
-                    <Bed className="h-6 w-6 text-primary mr-2" />
-                    <h3 className="text-xl font-medium">Accommodation</h3>
-                  </div>
-                  <p className="text-muted-foreground text-sm">
-                    {trip.accommodation}
-                  </p>
-                </div>
-                
-                {/* Food */}
-                <div className="glass-card p-6">
-                  <div className="flex items-center mb-4">
-                    <Utensils className="h-6 w-6 text-primary mr-2" />
-                    <h3 className="text-xl font-medium">Food</h3>
-                  </div>
-                  <p className="text-muted-foreground text-sm">
-                    {trip.food}
-                  </p>
-                </div>
-                
-                {/* Transportation */}
-                <div className="glass-card p-6">
-                  <div className="flex items-center mb-4">
-                    <Bus className="h-6 w-6 text-primary mr-2" />
-                    <h3 className="text-xl font-medium">Transportation</h3>
-                  </div>
-                  <p className="text-muted-foreground text-sm">
-                    {trip.transportation}
-                  </p>
-                </div>
-              </section>
-              
-              {/* Participants */}
-              <section className="glass-card p-6">
-                <h2 className="text-2xl font-semibold mb-4">
-                  Participants ({trip.members.length}/{trip.maxParticipants})
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {trip.members.map((member) => (
-                    <div 
-                      key={member.id}
-                      className="flex items-center bg-secondary rounded-full px-3 py-1"
-                    >
-                      <span 
-                        className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs mr-2"
-                      >
-                        {member.name.charAt(0)}
-                      </span>
-                      <span className="text-sm">
-                        {member.name}
-                        {member.id === trip.organizer.id && (
-                          <span className="ml-1 text-xs text-muted-foreground">(Organizer)</span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-            
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              {/* Trip summary card */}
-              <div className="glass-card p-6 sticky top-24">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold mb-1">
-                    ₹{trip.price}
-                  </h2>
-                  <p className="text-muted-foreground text-sm">per person</p>
-                </div>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="flex items-center">
-                    <Calendar className="h-5 w-5 text-muted-foreground mr-3" />
-                    <div>
-                      <p className="text-sm font-medium">Duration</p>
-                      <p className="text-muted-foreground text-sm">
-                        {Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 3600 * 24))} days
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <Users className="h-5 w-5 text-muted-foreground mr-3" />
-                    <div>
-                      <p className="text-sm font-medium">Group Size</p>
-                      <p className="text-muted-foreground text-sm">
-                        {trip.maxParticipants} people max
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <Globe className="h-5 w-5 text-muted-foreground mr-3" />
-                    <div>
-                      <p className="text-sm font-medium">Location</p>
-                      <p className="text-muted-foreground text-sm">
-                        {trip.destination}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <DollarSign className="h-5 w-5 text-muted-foreground mr-3" />
-                    <div>
-                      <p className="text-sm font-medium">What's Included</p>
-                      <p className="text-muted-foreground text-sm">
-                        Accommodation, Some meals, Local transportation
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Action buttons */}
-                <div className="space-y-3">
-                  {spotsLeft > 0 && !isUserJoined() ? (
-                    <Button
-                      className="w-full btn-primary h-12"
-                      onClick={handleJoinTrip}
-                      disabled={isJoining}
-                    >
-                      {isJoining ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Joining...
-                        </>
-                      ) : (
-                        'Join This Trip'
-                      )}
-                    </Button>
-                  ) : isUserJoined() ? (
-                    <Button className="w-full bg-green-600 hover:bg-green-700 text-white h-12" disabled>
-                      You've Joined This Trip
-                    </Button>
-                  ) : (
-                    <Button className="w-full bg-destructive text-destructive-foreground h-12" disabled>
-                      Trip is Full
-                    </Button>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" className="flex items-center justify-center">
-                      <Heart size={18} className="mr-2" />
-                      Save
-                    </Button>
-                    <Button variant="outline" className="flex items-center justify-center">
-                      <Share2 size={18} className="mr-2" />
-                      Share
-                    </Button>
-                  </div>
-                  
-                  <Button 
-                    variant="ghost" 
-                    className="w-full flex items-center justify-center text-muted-foreground"
-                  >
-                    <MessageSquare size={18} className="mr-2" />
-                    Contact Organizer
-                  </Button>
-                </div>
               </div>
+              
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">Food & Accommodation</h2>
+                <p><strong>Food:</strong> {trip.food}</p>
+                <p><strong>Accommodation:</strong> {trip.accommodation}</p>
+                <p><strong>Transportation:</strong> {trip.transportation}</p>
+              </div>
+
+              {user ? (
+                <Button onClick={handleJoinTrip}>Join Trip</Button>
+              ) : (
+                <Button onClick={() => navigate('/login')}>Login to Join Trip</Button>
+              )}
             </div>
           </div>
         </div>

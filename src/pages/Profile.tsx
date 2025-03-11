@@ -1,12 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, MapPin, Calendar, CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { fetchUserTrips } from '@/services/api';
 import { Trip } from '@/services/api';
 import { useQuery } from '@tanstack/react-query';
@@ -16,23 +15,23 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Use React Query to fetch user trips
+  // Use React Query to fetch user trips with correct error handling
   const { 
     data: userTrips = [], 
     isLoading,
-    error 
   } = useQuery({
     queryKey: ['userTrips', user?.id],
     queryFn: () => user ? fetchUserTrips(user.id) : Promise.resolve([]),
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    onError: (err: any) => {
-      console.error('Error fetching user trips:', err);
-      toast({
-        title: "Error loading trips",
-        description: "Could not load your trips. Please try again later.",
-        variant: "destructive"
-      });
+    meta: {
+      onError: (err: any) => {
+        console.error('Error fetching user trips:', err);
+        toast({
+          title: "Error loading trips",
+          description: "Could not load your trips. Please try again later.",
+          variant: "destructive"
+        });
+      }
     }
   });
 
@@ -106,7 +105,7 @@ const Profile = () => {
                     </div>
                   ) : userTrips.length > 0 ? (
                     <div className="space-y-4">
-                      {userTrips.map((trip) => (
+                      {userTrips.map((trip: Trip) => (
                         <div 
                           key={trip._id} 
                           className="flex items-center gap-4 p-3 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer"
@@ -148,17 +147,17 @@ const Profile = () => {
                   <div className="p-4 rounded-lg bg-secondary/50">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h4 className="font-medium">{user.hasPaid ? 'Premium Plan' : 'Free Plan'}</h4>
+                        <h4 className="font-medium">{user?.hasPaid ? 'Premium Plan' : 'Free Plan'}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {user.hasPaid 
+                          {user?.hasPaid 
                             ? 'Unlimited trips and premium features' 
-                            : `Free trips remaining: ${user.freeTripsLeft} of 2`}
+                            : `Free trips remaining: ${user?.freeTripsLeft} of 2`}
                         </p>
                       </div>
                       <CreditCard size={24} className="text-primary" />
                     </div>
-                    {!user.hasPaid && user.freeTripsLeft === 0 && (
-                      <Button className="w-full">
+                    {!user?.hasPaid && user?.freeTripsLeft === 0 && (
+                      <Button className="w-full" onClick={() => navigate('/upgrade')}>
                         Upgrade to Premium (₹10/trip)
                       </Button>
                     )}
