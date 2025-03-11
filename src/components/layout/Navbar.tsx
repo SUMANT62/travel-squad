@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, Moon, Sun } from 'lucide-react';
+import { Menu, X, User, LogOut, Moon, Sun, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 
@@ -78,6 +78,13 @@ export const Navbar = () => {
           >
             Explore Trips
           </Link>
+          <Link 
+            to="/pricing" 
+            className="text-foreground/80 hover:text-foreground transition-colors flex items-center gap-1"
+          >
+            <IndianRupee size={16} />
+            Pricing
+          </Link>
           {isAuthenticated ? (
             <>
               <Link 
@@ -143,6 +150,13 @@ export const Navbar = () => {
               className="text-foreground/80 hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-secondary"
             >
               Explore Trips
+            </Link>
+            <Link 
+              to="/pricing" 
+              className="text-foreground/80 hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-secondary flex items-center gap-2"
+            >
+              <IndianRupee size={18} />
+              Pricing
             </Link>
             {isAuthenticated ? (
               <>

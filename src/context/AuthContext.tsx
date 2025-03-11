@@ -19,6 +19,7 @@ type AuthContextType = {
   signUp: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateTripCount: () => Promise<boolean>;
+  updateSubscription: (trips: number) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,6 +128,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateSubscription = (trips: number) => {
+    if (!user) return;
+    
+    const updatedUser = {
+      ...user,
+      hasPaid: true,
+      freeTripsLeft: trips
+    };
+    
+    setUser(updatedUser);
+    localStorage.setItem('travelAppUser', JSON.stringify(updatedUser));
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('travelAppToken');
@@ -142,7 +156,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         signUp,
         logout,
-        updateTripCount
+        updateTripCount,
+        updateSubscription
       }}
     >
       {children}

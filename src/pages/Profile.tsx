@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, MapPin, Calendar, CreditCard, Loader2 } from 'lucide-react';
+import { User, MapPin, Calendar, CreditCard, Loader2, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -151,17 +151,22 @@ const Profile = () => {
                         <h4 className="font-medium">{user?.hasPaid ? 'Premium Plan' : 'Free Plan'}</h4>
                         <p className="text-sm text-muted-foreground">
                           {user?.hasPaid 
-                            ? 'Unlimited trips and premium features' 
+                            ? `Trips remaining: ${user?.freeTripsLeft}` 
                             : `Free trips remaining: ${user?.freeTripsLeft} of 2`}
                         </p>
                       </div>
                       <CreditCard size={24} className="text-primary" />
                     </div>
-                    {!user?.hasPaid && user?.freeTripsLeft === 0 && (
-                      <Button className="w-full" onClick={() => navigate('/upgrade')}>
-                        Upgrade to Premium (₹10/trip)
-                      </Button>
-                    )}
+                    <Button 
+                      className="w-full" 
+                      onClick={() => {
+                        navigate('/pricing');
+                        window.scrollTo(0, 0);
+                      }}
+                    >
+                      <IndianRupee size={16} className="mr-1" />
+                      View Subscription Options
+                    </Button>
                   </div>
                 </div>
               </div>

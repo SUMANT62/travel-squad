@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 const API_BASE_URL = "http://localhost:5000/api"; // Node.js backend URL
@@ -91,10 +92,10 @@ export const updateUserTripCount = async () => {
   });
 };
 
-export const processPayment = async (amount: number): Promise<{ success: boolean }> => {
+export const processPayment = async (amount: number, trips?: number): Promise<{ success: boolean }> => {
   return apiRequest('/payments/process', {
     method: 'POST',
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ amount, trips }),
   });
 };
 

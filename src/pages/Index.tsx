@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Users, Map, CreditCard, Shield, ArrowRight } from 'lucide-react';
@@ -39,9 +38,8 @@ const Index = () => {
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in animate-delay-300">
                 <Button 
-                  variant="default" 
                   size="lg" 
-                  className="btn-primary w-full sm:w-auto"
+                  className="px-8" 
                   onClick={() => {
                     navigate('/travel-rooms');
                     window.scrollTo(0, 0);
@@ -186,10 +184,10 @@ const Index = () => {
                 Join thousands of students already using TravelSquad to create unforgettable travel experiences.
               </p>
               <Button 
-                variant="outline" 
-                size="lg" 
-                className="bg-white text-primary hover:bg-white/90"
-                onClick={handleGetStarted}
+                onClick={() => {
+                  navigate('/signup');
+                  window.scrollTo(0, 0);
+                }}
               >
                 Create Free Account
               </Button>
