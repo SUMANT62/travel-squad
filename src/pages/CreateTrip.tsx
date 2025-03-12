@@ -14,30 +14,31 @@ import Footer from '@/components/layout/Footer';
 import ImageUpload from '@/components/ui-elements/ImageUpload';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-
-// API URL - will need to be updated with your actual API URL when deployed
-const API_URL = "http://localhost:3000/api";
+import { createTrip, processPayment, updateUserTripCount } from '@/services/api';
+import { toast } from "sonner";
 
 const CreateTrip = () => {
   const { user, updateTripCount } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Form state
+  const [title, setTitle] = useState('');
   const [destination, setDestination] = useState('');
   const [duration, setDuration] = useState('');
   const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [maxParticipants, setMaxParticipants] = useState('');
   const [description, setDescription] = useState('');
-  const [estimatedCost, setEstimatedCost] = useState('');
+  const [price, setPrice] = useState('');
   const [accommodation, setAccommodation] = useState('hotel');
   const [transportation, setTransportation] = useState('flight');
-  const [mealPlan, setMealPlan] = useState('none');
-  const [costDetails, setCostDetails] = useState('');
+  const [food, setFood] = useState('none');
+  const [itinerary, setItinerary] = useState('');
 
   // Redirect if not logged in
   useEffect(() => {
@@ -49,6 +50,16 @@ const CreateTrip = () => {
   const handleImageUpload = (url: string) => {
     setImages([...images, url]);
   };
+
+  // Calculate end date when start date and duration change
+  useEffect(() => {
+    if (startDate && duration) {
+      const start = new Date(startDate);
+      const end = new Date(start);
+      end.setDate(start.getDate() + parseInt(duration));
+      setEndDate(end.toISOString().split('T')[0]);
+    }
+  }, [startDate, duration]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,23 +76,56 @@ const CreateTrip = () => {
         return;
       }
       
-      // Process trip creation
-      // In a real implementation, this would be an API call to create the trip
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!user) {
+        toast.error("You must be logged in to create a trip");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (images.length === 0) {
+        toast.error("Please upload at least one image");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Process trip creation with actual API call
+      const itineraryArray = itinerary
+        .split('\n')
+        .map(item => item.trim())
+        .filter(item => item.length > 0);
       
-      toast({
-        title: "Trip created successfully!",
-        description: "Your new trip has been created and is now visible to others.",
-      });
+      const tripData = {
+        title,
+        destination,
+        image: images[0], // Use the first image as the main image
+        startDate,
+        endDate,
+        duration: `${duration} days`,
+        price: parseFloat(price),
+        participants: 1, // Start with the creator
+        maxParticipants: parseInt(maxParticipants),
+        description,
+        itinerary: itineraryArray,
+        food,
+        accommodation,
+        transportation,
+        organizer: {
+          id: user.id,
+          name: user.name
+        },
+        members: [{
+          id: user.id,
+          name: user.name
+        }]
+      };
       
-      navigate('/travel-rooms');
+      const createdTrip = await createTrip(tripData);
+      
+      toast.success("Trip created successfully!");
+      navigate(`/trips/${createdTrip._id}`);
     } catch (error) {
       console.error("Error creating trip:", error);
-      toast({
-        title: "Failed to create trip",
-        description: "An error occurred while creating your trip. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to create trip. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -91,40 +135,18 @@ const CreateTrip = () => {
     setPaymentLoading(true);
     
     try {
-      // In a real implementation, this would be an API call to create a payment session
-      // const response = await fetch(`${API_URL}/payments/create-session`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${localStorage.getItem('travelAppToken')}`,
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({
-      //     amount: 10, // ₹10 per trip
-      //     returnUrl: window.location.href
-      //   })
-      // });
+      // Use actual payment API
+      const response = await processPayment(10, 1); // ₹10 for 1 trip
       
-      // if (!response.ok) throw new Error('Failed to create payment session');
-      // const { redirectUrl } = await response.json();
-      // window.location.href = redirectUrl;
-      
-      // For now, just simulate the payment process with a timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate successful payment
-      toast({
-        title: "Payment successful!",
-        description: "You can now create your trip.",
-      });
-      
-      setShowPaymentDialog(false);
+      if (response.success) {
+        toast.success("Payment successful! You can now create your trip.");
+        setShowPaymentDialog(false);
+      } else {
+        throw new Error("Payment failed");
+      }
     } catch (error) {
       console.error("Payment error:", error);
-      toast({
-        title: "Payment failed",
-        description: "We couldn't process your payment. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("We couldn't process your payment. Please try again.");
     } finally {
       setPaymentLoading(false);
     }
@@ -168,6 +190,17 @@ const CreateTrip = () => {
                 </h2>
                 
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Trip Title</Label>
+                    <Input 
+                      id="title" 
+                      placeholder="e.g., Weekend Getaway to Paris" 
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required 
+                    />
+                  </div>
+                  
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="destination">Destination</Label>
@@ -207,15 +240,12 @@ const CreateTrip = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="maxParticipants">Max Participants</Label>
+                      <Label htmlFor="endDate">End Date</Label>
                       <Input 
-                        id="maxParticipants" 
-                        type="number" 
-                        min="2" 
-                        placeholder="e.g., 5" 
-                        value={maxParticipants}
-                        onChange={(e) => setMaxParticipants(e.target.value)}
-                        required 
+                        id="endDate" 
+                        type="date" 
+                        value={endDate}
+                        readOnly
                       />
                     </div>
                   </div>
@@ -244,18 +274,33 @@ const CreateTrip = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="estimatedCost">Estimated Cost per Person (₹)</Label>
+                      <Label htmlFor="price">Price per Person (₹)</Label>
                       <Input 
-                        id="estimatedCost" 
+                        id="price" 
                         type="number" 
                         min="0" 
                         placeholder="e.g., 15000" 
-                        value={estimatedCost}
-                        onChange={(e) => setEstimatedCost(e.target.value)}
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
                         required 
                       />
                     </div>
                     
+                    <div className="space-y-2">
+                      <Label htmlFor="maxParticipants">Max Participants</Label>
+                      <Input 
+                        id="maxParticipants" 
+                        type="number" 
+                        min="2" 
+                        placeholder="e.g., 5" 
+                        value={maxParticipants}
+                        onChange={(e) => setMaxParticipants(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="accommodation">Accommodation Type</Label>
                       <Select 
@@ -274,9 +319,7 @@ const CreateTrip = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    
                     <div className="space-y-2">
                       <Label htmlFor="transportation">Transportation Type</Label>
                       <Select 
@@ -295,35 +338,37 @@ const CreateTrip = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="mealPlan">Meal Plan</Label>
-                      <Select 
-                        value={mealPlan} 
-                        onValueChange={setMealPlan}
-                      >
-                        <SelectTrigger id="mealPlan">
-                          <SelectValue placeholder="Select meal plan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Self-arranged</SelectItem>
-                          <SelectItem value="breakfast">Breakfast only</SelectItem>
-                          <SelectItem value="halfboard">Half board</SelectItem>
-                          <SelectItem value="fullboard">Full board</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="costDetails">Cost Breakdown Details</Label>
+                    <Label htmlFor="food">Meal Plan</Label>
+                    <Select 
+                      value={food} 
+                      onValueChange={setFood}
+                    >
+                      <SelectTrigger id="food">
+                        <SelectValue placeholder="Select meal plan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Self-arranged</SelectItem>
+                        <SelectItem value="breakfast">Breakfast only</SelectItem>
+                        <SelectItem value="half-board">Half board</SelectItem>
+                        <SelectItem value="full-board">Full board</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="itinerary">Itinerary</Label>
                     <Textarea 
-                      id="costDetails" 
-                      placeholder="Break down the costs (accommodation, food, transportation, activities, etc.)" 
+                      id="itinerary" 
+                      placeholder="Enter itinerary day by day (one item per line)" 
                       className="min-h-[80px]"
-                      value={costDetails}
-                      onChange={(e) => setCostDetails(e.target.value)}
+                      value={itinerary}
+                      onChange={(e) => setItinerary(e.target.value)}
+                      required
                     />
+                    <p className="text-xs text-muted-foreground">Enter one activity per line, these will be displayed as bullet points</p>
                   </div>
                 </div>
               </div>
