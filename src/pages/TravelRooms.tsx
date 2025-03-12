@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Plus, MapPin, Users, Calendar, Loader2, Share2 } from 'lucide-react';
+import { Search, Filter, Plus, MapPin, Users, Calendar, Loader2, Share2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from "sonner";
@@ -19,6 +19,18 @@ import {
   DialogFooter,
   DialogClose
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const TravelRooms = () => {
   const { isAuthenticated } = useAuth();
@@ -29,36 +41,67 @@ const TravelRooms = () => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [currentShareUrl, setCurrentShareUrl] = useState('');
   const [currentShareTitle, setCurrentShareTitle] = useState('');
+  const [transportFilter, setTransportFilter] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Available transportation types
+  const transportOptions = [
+    { value: "", label: "All Transportation" },
+    { value: "bus", label: "Bus" },
+    { value: "train", label: "Train" },
+    { value: "flight", label: "Flight" },
+    { value: "car", label: "Car" },
+    { value: "bike", label: "Bike" },
+    { value: "walking", label: "Walking" },
+    { value: "mixed", label: "Mixed" }
+  ];
   
   // Fetch trips from API
   useEffect(() => {
-    const getTrips = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchTrips();
-        setTrips(data);
-        setFilteredTrips(data);
-      } catch (error) {
-        console.error("Failed to fetch trips:", error);
-        toast.error("Failed to load trips. Please try again later.");
-      } finally {
-        setIsLoading(false);
+    fetchTripsWithFilters();
+  }, [transportFilter]);
+  
+  // Function to fetch trips with filters
+  const fetchTripsWithFilters = async () => {
+    setIsLoading(true);
+    try {
+      const filters: { transportation?: string; destination?: string } = {};
+      
+      if (transportFilter) {
+        filters.transportation = transportFilter;
       }
-    };
-    
-    getTrips();
-  }, []);
+      
+      const data = await fetchTrips(filters);
+      setTrips(data);
+      
+      // Apply search filter if search term exists
+      if (searchTerm) {
+        applySearchFilter(data);
+      } else {
+        setFilteredTrips(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch trips:", error);
+      toast.error("Failed to load trips. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
-    
+    applySearchFilter(trips, term);
+  };
+  
+  // Apply search filter
+  const applySearchFilter = (tripsToFilter: Trip[], term: string = searchTerm) => {
     if (term.trim() === '') {
-      setFilteredTrips(trips);
+      setFilteredTrips(tripsToFilter);
     } else {
       setFilteredTrips(
-        trips.filter(trip => 
+        tripsToFilter.filter(trip => 
           trip.title.toLowerCase().includes(term) || 
           trip.destination.toLowerCase().includes(term)
         )
@@ -81,6 +124,19 @@ const TravelRooms = () => {
     navigator.clipboard.writeText(currentShareUrl);
     toast.success("Link copied to clipboard!");
     setShareDialogOpen(false);
+  };
+
+  // Handle transportation filter change
+  const handleTransportChange = (value: string) => {
+    setTransportFilter(value);
+  };
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setTransportFilter("");
+    setSearchTerm("");
+    setShowFilters(false);
+    fetchTripsWithFilters();
   };
 
   // Share via platforms
@@ -151,9 +207,65 @@ const TravelRooms = () => {
               </div>
               
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button variant="outline" className="flex-1 sm:flex-initial">
-                  <Filter size={16} className="mr-2" /> Filters
-                </Button>
+                <Popover open={showFilters} onOpenChange={setShowFilters}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="flex-1 sm:flex-initial">
+                      <Filter size={16} className="mr-2" /> 
+                      Filters
+                      {transportFilter && <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-primary"></span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">Filters</h3>
+                        <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 px-2 text-xs">
+                          Reset all
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="transportFilter" className="text-sm font-medium">
+                          Transportation Type
+                        </label>
+                        <Select value={transportFilter} onValueChange={handleTransportChange}>
+                          <SelectTrigger id="transportFilter">
+                            <SelectValue placeholder="Select transportation" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {transportOptions.map(option => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex justify-end">
+                        <Button size="sm" onClick={() => setShowFilters(false)}>Apply Filters</Button>
+                      </div>
+                      
+                      {transportFilter && (
+                        <div className="pt-2 border-t">
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {transportFilter && (
+                              <div className="bg-muted rounded-full px-3 py-1 text-xs flex items-center gap-1">
+                                <span>Transportation: {transportOptions.find(o => o.value === transportFilter)?.label}</span>
+                                <button 
+                                  onClick={() => setTransportFilter("")}
+                                  className="text-muted-foreground hover:text-foreground"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 
                 {isAuthenticated && (
                   <Link to="/create-trip" className="flex-1 sm:flex-initial">
@@ -164,6 +276,21 @@ const TravelRooms = () => {
                 )}
               </div>
             </div>
+            
+            {/* Active filters display */}
+            {transportFilter && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <div className="bg-muted rounded-full px-3 py-1 text-xs flex items-center gap-1">
+                  <span>Transportation: {transportOptions.find(o => o.value === transportFilter)?.label}</span>
+                  <button 
+                    onClick={() => setTransportFilter("")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Trips Grid */}
@@ -206,9 +333,16 @@ const TravelRooms = () => {
                       
                       <div className="flex justify-between items-center mt-3">
                         <span className="font-medium">₹{trip.price} per person</span>
-                        <Button variant="ghost" size="sm" className="text-primary">
-                          View Details
-                        </Button>
+                        <div className="flex items-center">
+                          {trip.transportation && (
+                            <span className="mr-2 text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                              {trip.transportation}
+                            </span>
+                          )}
+                          <Button variant="ghost" size="sm" className="text-primary">
+                            View Details
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -236,8 +370,8 @@ const TravelRooms = () => {
               <p className="text-muted-foreground mb-6">
                 We couldn't find any trips matching your search criteria.
               </p>
-              <Button onClick={() => {setSearchTerm(''); setFilteredTrips(trips);}}>
-                Clear Search
+              <Button onClick={resetFilters}>
+                Clear Filters
               </Button>
             </div>
           )}

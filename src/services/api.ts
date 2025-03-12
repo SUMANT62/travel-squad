@@ -100,8 +100,30 @@ export const processPayment = async (amount: number, trips?: number): Promise<{ 
 };
 
 // Trip API
-export const fetchTrips = async (): Promise<Trip[]> => {
-  return apiRequest('/trips');
+export const fetchTrips = async (filters?: {
+  transportation?: string;
+  destination?: string;
+}): Promise<Trip[]> => {
+  let endpoint = '/trips';
+  
+  // Add query parameters if filters are provided
+  if (filters) {
+    const params = new URLSearchParams();
+    
+    if (filters.transportation) {
+      params.append('transportation', filters.transportation);
+    }
+    
+    if (filters.destination) {
+      params.append('destination', filters.destination);
+    }
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+  }
+  
+  return apiRequest(endpoint);
 };
 
 export const fetchTripById = async (id: string): Promise<Trip> => {
