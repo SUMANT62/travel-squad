@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Plus, MapPin, Users, Calendar, Loader2, Share2, X } from 'lucide-react';
+import { Search, Filter, Plus, MapPin, Users, Calendar, Loader2, Share2, X, Bus, Car, Train, Plane } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from "sonner";
@@ -46,14 +46,11 @@ const TravelRooms = () => {
   
   // Available transportation types
   const transportOptions = [
-    { value: "", label: "All Transportation" },
-    { value: "bus", label: "Bus" },
-    { value: "train", label: "Train" },
-    { value: "flight", label: "Flight" },
-    { value: "car", label: "Car" },
-    { value: "bike", label: "Bike" },
-    { value: "walking", label: "Walking" },
-    { value: "mixed", label: "Mixed" }
+    { value: "", label: "All Transportation", icon: null },
+    { value: "bus", label: "Bus", icon: <Bus size={16} className="mr-2" /> },
+    { value: "train", label: "Train", icon: <Train size={16} className="mr-2" /> },
+    { value: "flight", label: "Flight", icon: <Plane size={16} className="mr-2" /> },
+    { value: "car", label: "Car", icon: <Car size={16} className="mr-2" /> }
   ];
   
   // Fetch trips from API
@@ -215,7 +212,7 @@ const TravelRooms = () => {
                       {transportFilter && <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-primary"></span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-4">
+                  <PopoverContent className="w-80 p-4 bg-background border border-border shadow-md z-50">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="font-medium">Filters</h3>
@@ -225,21 +222,25 @@ const TravelRooms = () => {
                       </div>
                       
                       <div className="space-y-2">
-                        <label htmlFor="transportFilter" className="text-sm font-medium">
+                        <label className="text-sm font-medium">
                           Transportation Type
                         </label>
-                        <Select value={transportFilter} onValueChange={handleTransportChange}>
-                          <SelectTrigger id="transportFilter">
-                            <SelectValue placeholder="Select transportation" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {transportOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-2 gap-2">
+                          {transportOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                                transportFilter === option.value
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted hover:bg-muted/80"
+                              }`}
+                              onClick={() => handleTransportChange(option.value)}
+                            >
+                              {option.icon}
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       
                       <div className="flex justify-end">

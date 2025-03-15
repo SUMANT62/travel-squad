@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Users, CreditCard, Camera, Plus, AlertTriangle } from 'lucide-react';
@@ -8,13 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import ImageUpload from '@/components/ui-elements/ImageUpload';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { createTrip, processPayment, updateUserTripCount } from '@/services/api';
+import { createTrip, updateUserTripCount } from '@/services/api';
 import { toast } from "sonner";
 
 const CreateTrip = () => {
@@ -23,8 +21,6 @@ const CreateTrip = () => {
   const { toast: uiToast } = useToast();
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -40,10 +36,17 @@ const CreateTrip = () => {
   const [food, setFood] = useState('none');
   const [itinerary, setItinerary] = useState('');
 
-  // Redirect if not logged in
+  // Redirect if not logged in or check if they have free trips
   useEffect(() => {
     if (!user) {
       navigate('/login');
+      return;
+    }
+
+    // If user has no free trips left and hasn't paid, redirect to pricing
+    if (user.freeTripsLeft <= 0 && !user.hasPaid) {
+      toast.info("You've used all your free trips. Please subscribe to create more trips.");
+      navigate('/pricing');
     }
   }, [user, navigate]);
 
@@ -67,11 +70,12 @@ const CreateTrip = () => {
     
     try {
       // Check if user still has free trips or has paid
-      const hasFreeTripLeft = await updateTripCount();
+      const canCreateTrip = await updateTripCount();
       
-      if (!hasFreeTripLeft && !user?.hasPaid) {
+      if (!canCreateTrip) {
         // User has no free trips left and hasn't paid
-        setShowPaymentDialog(true);
+        toast.info("You've used all your free trips. Please subscribe to create more trips.");
+        navigate('/pricing');
         setIsSubmitting(false);
         return;
       }
@@ -131,28 +135,13 @@ const CreateTrip = () => {
     }
   };
 
-  const redirectToPayment = async () => {
-    setPaymentLoading(true);
-    
-    try {
-      // Use actual payment API
-      const response = await processPayment(10, 1); // ₹10 for 1 trip
-      
-      if (response.success) {
-        toast.success("Payment successful! You can now create your trip.");
-        setShowPaymentDialog(false);
-      } else {
-        throw new Error("Payment failed");
-      }
-    } catch (error) {
-      console.error("Payment error:", error);
-      toast.error("We couldn't process your payment. Please try again.");
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
   if (!user) return null;
+  
+  // Redirect to pricing if no free trips left
+  if (user.freeTripsLeft <= 0 && !user.hasPaid) {
+    navigate('/pricing');
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -168,15 +157,15 @@ const CreateTrip = () => {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Free Trips Remaining</AlertTitle>
                 <AlertDescription>
-                  You have {user.freeTripsLeft} free trip{user.freeTripsLeft > 1 ? 's' : ''} left. After that, each trip creation will cost ₹10.
+                  You have {user.freeTripsLeft} free trip{user.freeTripsLeft > 1 ? 's' : ''} left. After that, you'll need to upgrade your subscription.
                 </AlertDescription>
               </Alert>
             ) : !user.hasPaid && (
               <Alert variant="destructive" className="mb-6">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Payment Required</AlertTitle>
+                <AlertTitle>Subscription Required</AlertTitle>
                 <AlertDescription>
-                  You've used all your free trips. Creating a new trip will cost ₹10.
+                  You've used all your free trips. Please upgrade your subscription to create more trips.
                 </AlertDescription>
               </Alert>
             )}
@@ -427,40 +416,6 @@ const CreateTrip = () => {
       </main>
       
       <Footer />
-      
-      {/* Payment Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Subscription Payment Required</DialogTitle>
-            <DialogDescription>
-              You've used all your free trips. To create more trips, you'll need to pay ₹10 per trip.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <div className="bg-muted p-4 rounded-lg mb-4">
-              <div className="flex justify-between items-center">
-                <span>Trip creation fee</span>
-                <span className="font-semibold">₹10.00</span>
-              </div>
-            </div>
-            
-            <p className="text-sm text-muted-foreground">
-              We use Stripe for secure payment processing. You'll be redirected to complete your payment.
-            </p>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={redirectToPayment} disabled={paymentLoading}>
-              {paymentLoading ? 'Processing...' : 'Proceed to Payment'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

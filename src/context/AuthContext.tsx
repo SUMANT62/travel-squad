@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { loginUser, registerUser } from '@/services/api';
+import { loginUser, registerUser, updateUserTripCount as apiUpdateTripCount } from '@/services/api';
 
 type User = {
   id: string;
@@ -110,8 +110,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return false;
     
     try {
-      // Here you would make an API call to update the trip count
-      // For now we'll just update the local state
+      // Actually call the API to update trip count
+      await apiUpdateTripCount();
+      
       const updatedUser = {
         ...user,
         tripCount: user.tripCount + 1,
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(updatedUser);
       localStorage.setItem('travelAppUser', JSON.stringify(updatedUser));
       
-      return updatedUser.freeTripsLeft > 0;
+      return updatedUser.freeTripsLeft > 0 || updatedUser.hasPaid;
     } catch (error) {
       console.error('Error updating trip count:', error);
       return false;
