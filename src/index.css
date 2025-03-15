@@ -37,7 +37,7 @@
   }
 
   .dark {
-    /* Dark mode - Changed primary from blue to orange (#FF5722) */
+    /* Dark mode - Changed primary to black */
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
 
@@ -47,7 +47,7 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 16 100% 54%;
+    --primary: 0 0% 0%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 217 33% 18%;
@@ -56,7 +56,7 @@
     --muted: 217 33% 18%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 16 100% 54%;
+    --accent: 0 0% 0%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 63% 31%;
@@ -64,7 +64,7 @@
 
     --border: 217 33% 18%;
     --input: 217 33% 18%;
-    --ring: 16 100% 54%;
+    --ring: 0 0% 0%;
   }
 }
 

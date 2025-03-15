@@ -10,7 +10,6 @@ import {
   ArrowRight, 
   Sparkles, 
   Globe,
-  Star,
   PlayCircle,
   Compass
 } from 'lucide-react';
@@ -130,21 +129,21 @@ const Index = () => {
                   </div>
                   <div className="text-sm">
                     <p className="font-medium">Joined by 2,000+ students</p>
-                    <div className="flex items-center text-muted-foreground">
-                      <Star size={14} className="text-yellow-500 mr-1 fill-yellow-500" />
-                      <span>4.9/5 rating</span>
-                    </div>
                   </div>
                 </div>
               </div>
               
               <div className="order-1 md:order-2 animate-fade-in animate-delay-200 relative">
                 <div className="aspect-[4/3] relative z-10 rounded-2xl overflow-hidden shadow-2xl transform md:rotate-2 group transition-all duration-500">
-                  <img 
-                    src="https://images.unsplash.com/photo-1527631746610-bca00a040d60?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" 
-                    alt="Students traveling together" 
+                  <video 
+                    autoPlay 
+                    muted 
+                    loop 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+                  >
+                    <source src="https://assets.mixkit.co/videos/preview/mixkit-group-of-friends-partying-happily-4640-large.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 </div>
                 
@@ -167,7 +166,7 @@ const Index = () => {
                     <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center text-green-500">
                       <Users size={16} />
                     </div>
-                    <p className="text-xs font-medium">12 Travelers Joined</p>
+                    <p className="text-xs font-medium">Join Travelers</p>
                   </div>
                 </div>
               </div>
@@ -248,11 +247,15 @@ const Index = () => {
             {/* Video showcase */}
             <div className="mt-20 animate-on-scroll">
               <div className="relative aspect-video rounded-2xl overflow-hidden shadow-xl">
-                <img 
-                  src="https://images.unsplash.com/photo-1464746133101-a2c3f88e0dd9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
-                  alt="Travel experience video thumbnail" 
+                <video 
+                  autoPlay 
+                  muted 
+                  loop 
                   className="w-full h-full object-cover"
-                />
+                >
+                  <source src="https://assets.mixkit.co/videos/preview/mixkit-friends-with-colored-smoke-bombs-4556-large.mp4" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <div className="relative">
                     <div className="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
